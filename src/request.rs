@@ -44,7 +44,71 @@ pub struct User {
 pub struct Device {
     #[serde(rename = "deviceId")]
     pub device_id: String,
+    #[serde(rename = "supportedInterfaces")]
+    pub supported_interfaces: SupportedInterfaces,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SupportedInterfaces {
+    #[serde(rename = "Alexa.Presentation.APL")]
+    pub alexa_presentation_apl: Option<AlexaPresentationAplInterface>,
+    #[serde(rename = "Alexa.Presentation.APLT")]
+    pub alexa_presentation_aplt: Option<AlexaPresentationApltInterface>,
+    #[serde(rename = "Alexa.Presentation.HTML")]
+    pub alexa_presentation_html: Option<AlexaPresentationHtmlInterface>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationAplInterface {
+    pub runtime: AplRuntime,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AplRuntime {
+    #[serde(rename = "maxVersion")]
+    pub max_version: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationApltInterface {
+    pub runtime: ApltRuntime,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApltRuntime {
+    #[serde(rename = "maxVersion")]
+    pub max_version: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationHtmlInterface {
+    pub runtime: HtmlRuntime,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HtmlRuntime {
+    #[serde(rename = "maxVersion")]
+    pub max_version: String,
+}
+
+//TODO
+// @JsonProperty("AppLink")
+// private com.amazon.ask.model.interfaces.applink.AppLinkInterface appLink = null;
+
+// @JsonProperty("AudioPlayer")
+// private com.amazon.ask.model.interfaces.audioplayer.AudioPlayerInterface audioPlayer = null;
+
+// @JsonProperty("Display")
+// private com.amazon.ask.model.interfaces.display.DisplayInterface display = null;
+
+// @JsonProperty("VideoApp")
+// private com.amazon.ask.model.interfaces.videoapp.VideoAppInterface videoApp = null;
+
+// @JsonProperty("Geolocation")
+// private com.amazon.ask.model.interfaces.geolocation.GeolocationInterface geolocation = null;
+
+// @JsonProperty("Navigation")
+// private com.amazon.ask.model.interfaces.navigation.NavigationInterface navigation = null;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReqBody {

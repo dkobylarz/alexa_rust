@@ -21,7 +21,7 @@ impl fmt::Display for Version {
 
 impl Response {
     /// Constructs a new response with only required elements
-    pub fn new(should_end: bool) -> Response {
+    pub fn new(should_end: Option<bool>) -> Response {
         Response {
             version: Version::V1_0.to_string(),
             session_attributes: None,
@@ -30,6 +30,7 @@ impl Response {
                 card: None,
                 reprompt: None,
                 should_end_session: should_end,
+                directives: vec![],
             },
         }
     }
@@ -41,14 +42,14 @@ impl Response {
 
     /// Constructs a basic plain response with a simple card
     pub fn simple(title: &str, text: &str) -> Response {
-        Response::new(true)
+        Response::new(Some(true))
             .card(Card::simple(title, text))
             .speech(Speech::plain(text))
     }
 
     /// Constructs an empty response ending the session
     pub fn end() -> Response {
-        Response::new(true)
+        Response::new(Some(true))
     }
 
     /// adds a speach element to the response
@@ -75,6 +76,10 @@ impl Response {
             self.session_attributes = Some(h)
         }
     }
+
+    pub fn add_directive(&mut self, directive: Directive) {
+        self.body.directives.push(directive);
+    }
 }
 
 /// Response struct implementing the [Alexa JSON spec](https://developer.amazon.com/docs/custom-skills/request-and-response-json-reference.html#response-parameters)
@@ -97,8 +102,10 @@ pub struct ResBody {
     card: Option<Card>,
     #[serde(skip_serializing_if = "Option::is_none")]
     reprompt: Option<Reprompt>,
-    #[serde(rename = "shouldEndSession")]
-    should_end_session: bool,
+    #[serde(rename = "shouldEndSession", skip_serializing_if = "Option::is_none")]
+    should_end_session: Option<bool>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    directives: Vec<Directive>,
 }
 
 enum SpeechType {
@@ -302,6 +309,92 @@ impl Default for Image {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum Directive {
+    #[serde(rename = "Alexa.Presentation.HTML.Start")]
+    AlexaPresentationHTMLStartDirective(AlexaPresentationHTMLStartDirective),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationHTMLStartDirective {
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub data: HashMap<String, String>,
+    pub request: AlexaPresentationHTMLStartDirectiveRequest,
+    pub configuration: AlexaPresentationHTMLStartDirectiveConfiguration,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub transformers: Vec<AlexaPresentationHTMLStartDirectiveTransformer>,
+}
+impl AlexaPresentationHTMLStartDirective {
+    pub fn new(
+        data: HashMap<String, String>,
+        request: AlexaPresentationHTMLStartDirectiveRequest,
+        configuration: AlexaPresentationHTMLStartDirectiveConfiguration,
+        transformers: Vec<AlexaPresentationHTMLStartDirectiveTransformer>,
+    ) -> Self {
+        Self {
+            data: data,
+            request: request,
+            configuration: configuration,
+            transformers: transformers,
+        }
+    }
+}
+// impl Directive for AlexaPresentationHTMLStartDirective {}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationHTMLStartDirectiveRequest {
+    pub uri: String,
+    pub method: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub headers: HashMap<String, String>,
+}
+
+impl AlexaPresentationHTMLStartDirectiveRequest {
+    pub fn new(uri: String) -> Self {
+        AlexaPresentationHTMLStartDirectiveRequest::new_with_headers(uri, HashMap::new())
+    }
+
+    pub fn new_with_headers(uri: String, headers: HashMap<String, String>) -> Self {
+        Self {
+            uri: uri,
+            method: "GET".to_string(),
+            headers: headers,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationHTMLStartDirectiveConfiguration {
+    #[serde(rename = "timeoutInSeconds", skip_serializing_if = "Option::is_none")]
+    pub timeout_in_seconds: Option<u32>,
+}
+
+impl AlexaPresentationHTMLStartDirectiveConfiguration {
+    pub fn new(timeout_in_seconds: u32) -> Self {
+        Self {
+            timeout_in_seconds: Some(timeout_in_seconds),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AlexaPresentationHTMLStartDirectiveTransformer {
+    #[serde(rename = "inputPath")]
+    pub input_path: String,
+    #[serde(rename = "outputName", skip_serializing_if = "Option::is_none")]
+    pub output_name: Option<String>,
+    pub transformer: AlexaPresentationHTMLStartDirectiveTransformerType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AlexaPresentationHTMLStartDirectiveTransformerType {
+    #[serde(rename = "ssmlToSpeech")]
+    SsmlToSpeech,
+    #[serde(rename = "textToSpeech")]
+    TextToSpeech,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_builder() {
-        let mut res = Response::new(false)
+        let mut res = Response::new(Some(false))
             .card(Card::standard(
                 "foo",
                 "bar",
@@ -340,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_builder_with_image_builder() {
-        let mut res = Response::new(false)
+        let mut res = Response::new(Some(false))
             .card(Card::standard(
                 "foo",
                 "bar",
@@ -408,6 +501,6 @@ mod tests {
     #[test]
     fn test_should_end() {
         let r = Response::simple("foo", "bar");
-        assert_eq!(r.body.should_end_session, true);
+        assert_eq!(r.body.should_end_session, Some(true));
     }
 }
